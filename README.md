@@ -112,11 +112,28 @@ service containers (`HYBRID_DB_ENGINE` swapped per step), same pattern as
 `hybrid-db-javascript` - proving the DB scenario's "any engine" claim
 against real servers, not just sqlite.
 
-No real bugs surfaced while building this port - the sibling
-`hybrid-db-javascript`'s already-solved problems (native `better-sqlite3`
-blocked by this environment's npm script policy, fixed by switching to
-Node's built-in `node:sqlite`; the `?`→`$1` placeholder translation needed
-for postgres) were reused directly here rather than rediscovered.
+The sibling `hybrid-db-javascript`'s already-solved problems (native
+`better-sqlite3` blocked by this environment's npm script policy, fixed by
+switching to Node's built-in `node:sqlite`; the `?`→`$1` placeholder
+translation needed for postgres) were reused directly here rather than
+rediscovered.
+
+**Real bug found only by letting CI run to completion, not just checking
+that it started:** the postgres and mysql CI steps hung indefinitely (past
+5 hours, until manually cancelled) while the sqlite step passed in seconds.
+Root cause: `dbScenarios.insertAndSelect()` opens one `DbClient`/connection
+per virtual user but nothing ever closes them. For sqlite (`node:sqlite`'s
+synchronous `DatabaseSync`) a leaked handle doesn't matter - nothing keeps
+Node's event loop alive. For postgres/mysql, the underlying TCP socket
+**does** keep the event loop alive, so with plain `mocha` (no `--exit`
+flag) the process never exits once the test assertions finish - `npm test`
+just hangs forever, indistinguishable from the network genuinely stalling
+unless you know to check whether the *test framework* exited, not just
+whether the *scenario* did. Fixed by adding `--exit` to the mocha command
+in `package.json` (`mocha test/**/*.spec.js --timeout 20000 --exit`) -
+mocha force-exits once the suite finishes regardless of open handles, which
+is the standard fix for this exact class of issue in Node test suites that
+intentionally hold long-lived connections for the run's duration.
 
 ## CI
 

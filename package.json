@@ -4,7 +4,7 @@
   "description": "Reusable performance testing framework (JavaScript) - generic concurrent load-test runner with configurable pass/fail thresholds, HTTP scenario against dummyjson.com and DB scenario swappable across sqlite/postgres/mysql",
   "main": "lib/index.js",
   "scripts": {
-    "test": "mocha test/**/*.spec.js --timeout 20000"
+    "test": "mocha test/**/*.spec.js --timeout 20000 --exit"
   },
   "license": "MIT",
   "engines": {
