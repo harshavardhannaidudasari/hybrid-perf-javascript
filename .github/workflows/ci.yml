@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hybriddb
+          POSTGRES_PASSWORD: hybriddb
+          POSTGRES_DB: hybriddb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hybriddb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_USER: hybriddb
+          MYSQL_PASSWORD: hybriddb
+          MYSQL_ROOT_PASSWORD: hybriddb
+          MYSQL_DATABASE: hybriddb
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - run: npm install
+
+      - name: Run against sqlite (default, no server needed)
+        run: npm test
+
+      - name: Run against postgres
+        run: npm test
+        env:
+          HYBRID_DB_ENGINE: postgres
+          HYBRID_DB_HOST: localhost
+          HYBRID_DB_PORT: 5432
+          HYBRID_DB_NAME: hybriddb
+          HYBRID_DB_USER: hybriddb
+          HYBRID_DB_PASSWORD: hybriddb
+
+      - name: Run against mysql
+        run: npm test
+        env:
+          HYBRID_DB_ENGINE: mysql
+          HYBRID_DB_HOST: 127.0.0.1
+          HYBRID_DB_PORT: 3306
+          HYBRID_DB_NAME: hybriddb
+          HYBRID_DB_USER: hybriddb
+          HYBRID_DB_PASSWORD: hybriddb
